@@ -63,6 +63,20 @@ class SubscriptionBuilder
     protected $metadata;
 
     /**
+     * The parameters to apply to the subscription.
+     *
+     * @var array
+     */
+    protected $params = [];
+
+    /**
+     * The options to apply to the subscription.
+     *
+     * @var array|null
+     */
+    protected $options;
+
+    /**
      * Create a new subscription builder instance.
      *
      * @param  mixed  $owner
@@ -155,6 +169,32 @@ class SubscriptionBuilder
     }
 
     /**
+     * The parameters to apply to a new subscription.
+     *
+     * @param array $params
+     * @return $this
+     */
+    public function withParams(array $params)
+    {
+        $this->params = $params;
+
+        return $this;
+    }
+
+    /**
+     * The options to apply to a new subscription.
+     *
+     * @param array $options
+     * @return $this
+     */
+    public function withOptions(array $options)
+    {
+        $this->options = $options;
+
+        return $this;
+    }
+
+    /**
      * Add a new Stripe subscription to the Stripe model.
      *
      * @param  array  $options
@@ -176,7 +216,7 @@ class SubscriptionBuilder
     {
         $customer = $this->getStripeCustomer($token, $options);
 
-        $subscription = $customer->subscriptions->create($this->buildPayload());
+        $subscription = $customer->subscriptions->create($this->buildPayload(), $this->options);
 
         if ($this->skipTrial) {
             $trialEndsAt = null;
@@ -223,14 +263,14 @@ class SubscriptionBuilder
      */
     protected function buildPayload()
     {
-        return array_filter([
+        return array_filter(array_merge_recursive([
             'plan' => $this->plan,
             'quantity' => $this->quantity,
             'coupon' => $this->coupon,
             'trial_end' => $this->getTrialEndForPayload(),
             'tax_percent' => $this->getTaxPercentageForPayload(),
             'metadata' => $this->metadata,
-        ]);
+        ], $this->params));
     }
 
     /**

@@ -27,6 +27,13 @@ trait Billable
     protected static $stripeKey;
 
     /**
+     * The Stripe API options.
+     *
+     * @var array
+     */
+    protected $stripeApiOptions;
+
+    /**
      * Make a "one off" charge on the customer for the given amount.
      *
      * @param  int  $amount
@@ -51,7 +58,7 @@ trait Billable
             throw new InvalidArgumentException('No payment source provided.');
         }
 
-        return StripeCharge::create($options, ['api_key' => $this->getStripeKey()]);
+        return StripeCharge::create($options, $this->getStripeApiOptions());
     }
 
     /**
@@ -67,7 +74,7 @@ trait Billable
     {
         $options['charge'] = $charge;
 
-        return StripeRefund::create($options, ['api_key' => $this->getStripeKey()]);
+        return StripeRefund::create($options, $this->getStripeApiOptions());
     }
 
     /**
@@ -104,7 +111,7 @@ trait Billable
         ], $options);
 
         return StripeInvoiceItem::create(
-            $options, ['api_key' => $this->getStripeKey()]
+            $options, $this->getStripeApiOptions()
         );
     }
 
@@ -226,7 +233,7 @@ trait Billable
     {
         if ($this->stripe_id) {
             try {
-                return StripeInvoice::create(['customer' => $this->stripe_id], $this->getStripeKey())->pay();
+                return StripeInvoice::create(['customer' => $this->stripe_id], $this->getStripeApiOptions())->pay();
             } catch (StripeErrorInvalidRequest $e) {
                 return false;
             }
@@ -244,7 +251,7 @@ trait Billable
     {
         try {
             $stripeInvoice = StripeInvoice::upcoming(
-                ['customer' => $this->stripe_id], ['api_key' => $this->getStripeKey()]
+                ['customer' => $this->stripe_id], $this->getStripeApiOptions()
             );
 
             return new Invoice($this, $stripeInvoice);
@@ -262,7 +269,7 @@ trait Billable
     public function findInvoice($id)
     {
         try {
-            return new Invoice($this, StripeInvoice::retrieve($id, $this->getStripeKey()));
+            return new Invoice($this, StripeInvoice::retrieve($id, $this->getStripeApiOptions()));
         } catch (Exception $e) {
             //
         }
@@ -391,7 +398,7 @@ trait Billable
     {
         $customer = $this->asStripeCustomer();
 
-        $token = StripeToken::retrieve($token, ['api_key' => $this->getStripeKey()]);
+        $token = StripeToken::retrieve($token, $this->getStripeApiOptions());
 
         // If the given token already has the card as their default source, we can just
         // bail out of the method now. We don't need to keep adding the same card to
@@ -468,7 +475,7 @@ trait Billable
         $this->cards()->each(function ($card) {
             $card->delete();
         });
-        
+
         $this->updateCardFromStripe();
     }
 
@@ -550,7 +557,7 @@ trait Billable
         // user from Stripe. This ID will correspond with the Stripe user instances
         // and allow us to retrieve users from Stripe later when we need to work.
         $customer = StripeCustomer::create(
-            $options, $this->getStripeKey()
+            $options, $this->getStripeApiOptions()
         );
 
         $this->stripe_id = $customer->id;
@@ -574,7 +581,7 @@ trait Billable
      */
     public function asStripeCustomer()
     {
-        return StripeCustomer::retrieve($this->stripe_id, $this->getStripeKey());
+        return StripeCustomer::retrieve($this->stripe_id, $this->getStripeApiOptions());
     }
 
     /**
@@ -598,12 +605,29 @@ trait Billable
     }
 
     /**
-     * Get the Stripe API key.
+     * The options to apply to a new subscription.
      *
-     * @return string
+     * @param array $options
+     * @return $this
      */
-    public static function getStripeKey()
+    public function setStripeApiOptions(array $options)
     {
+        $this->stripeApiOptions = $options;
+
+        return $this;
+    }
+
+    /**
+     * Get the Stripe API options.
+     *
+     * @return array|string
+     */
+    public function getStripeApiOptions()
+    {
+        if ($this->stripeApiOptions) {
+            return $this->stripeApiOptions;
+        }
+
         if (static::$stripeKey) {
             return static::$stripeKey;
         }
