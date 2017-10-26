@@ -404,6 +404,11 @@ trait Billable
         // bail out of the method now. We don't need to keep adding the same card to
         // a model's account every time we go through this particular method call.
         if ($token[$token->type]->id === $customer->default_source) {
+
+            if (! $this->card_brand) {
+                $this->fillCardDetails($token[$token->type])->save();
+            }
+
             return;
         }
 
