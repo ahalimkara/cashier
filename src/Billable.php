@@ -633,6 +633,16 @@ trait Billable
             return $this->stripeApiOptions;
         }
 
+        return static::getStripeKey();
+    }
+
+    /**
+     * Get the Stripe API options.
+     *
+     * @return array|string
+     */
+    public static function getStripeKey()
+    {
         if (static::$stripeKey) {
             return static::$stripeKey;
         }
